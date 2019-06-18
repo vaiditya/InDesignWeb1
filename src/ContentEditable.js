@@ -1,5 +1,6 @@
 import React, { Component } from "react";
-import PropTypes from "prop-types"
+import PropTypes from "prop-types";
+import metadata from "./metadata";
 
 export class Caret {
     /**
@@ -49,6 +50,11 @@ function normalizeHtml(str) {
 }
 
 export default class ContentEditable extends Component {
+
+  constructor(props){
+    super(props);
+    Object.values(metadata).map((element)=> element.pages.map((mapElement)=>this.allPages.push(mapElement)))
+  }
   static propTypes = {
     html: PropTypes.string,
     onChange: PropTypes.func,
@@ -80,17 +86,27 @@ export default class ContentEditable extends Component {
     sel.removeAllRanges();
     sel.addRange(range);
   }
-
+  allPages=[]
+  nextPageDetails=null
+  currPageDetails=null
+  bufferContent="";
  
   emitKeyup = (e) => {
    
-    let currentPageEl = this.getEl();
+    
+    let currentEditableElId=`editable_${this.props.page.id}`;
+    let nextEditableElId=`editable_${this.props.page.next_page}`;
+    let nextPageId=this.props.page.next_page;
+    let currentPageId=this.props.page.id;
+    let currentPageEl=this.getEl();
+   
+    let nextEditableEl = document.getElementById(nextEditableElId)
     if (!currentPageEl) return;
 
     const selection = window.getSelection();
     
     
-    if(selection.anchorNode.offsetTop === undefined) {
+    if(selection.anchorNode && selection.anchorNode.offsetTop === undefined) {
       this.currentCaretPosition = selection.anchorNode.parentNode ? selection.anchorNode.parentNode.offsetTop + selection.anchorNode.parentNode.offsetHeight: 0
     } else {
       this.currentCaretPosition = selection.anchorNode ? selection.anchorNode.offsetTop + selection.anchorNode.offsetHeight: 0
@@ -141,7 +157,7 @@ export default class ContentEditable extends Component {
       }
     }
     if (e.keyCode===13){
-      let caretPos=selection.anchorNode.parentNode.clientHeight+selection.anchorNode.parentNode.offsetTop
+      
       e.preventDefault()
       let originalEl=null
       let beforeElement=null 
@@ -151,6 +167,7 @@ export default class ContentEditable extends Component {
       let textNode=null 
       let brElement=null
       let brElementContainer=null
+      console.log("this.caretPosition",this.currentCaretPosition)
 
       if (selection.anchorOffset > 0 && selection.anchorOffset < selection.anchorNode.parentNode.innerText.length ){
         e.preventDefault()
@@ -181,7 +198,7 @@ export default class ContentEditable extends Component {
 
             this.moveFocus(textNode, 0)
         }else{
-            console.log("selection.anchorNode.isEqualNode(currentPageEl)",selection)
+            console.log("selection.anchorNode.isEqualNode(currentPageEl)",this.prevElement)
             brElementContainer=this.prevElement.cloneNode(true)
             brElement=document.createElement("br")
             brElementContainer.replaceChild(brElement,brElementContainer.firstChild)
@@ -194,7 +211,7 @@ export default class ContentEditable extends Component {
       }else if (selection.anchorOffset === 0){
         console.log("selection.anchorOffset === 0")
         e.preventDefault()
-
+        console.log(selection)
         originalEl=selection.anchorNode.parentNode;
         
         if(!originalEl.isEqualNode(currentPageEl)){
@@ -216,23 +233,21 @@ export default class ContentEditable extends Component {
 
             this.moveFocus(textNode, 0)
         }else{
-          
+            console.log("same as parent",selection.anchorNode)
             originalEl=selection.anchorNode;
 
             brElementContainer=originalEl.cloneNode(true)
             brElement=document.createElement("br")
             brElementContainer.replaceChild(brElement,brElementContainer.firstChild)
-
             currentPageEl.insertBefore(brElementContainer,originalEl)
+            this.prevElement=brElementContainer
 
-            originalEl=selection.anchorNode;
-
-            // brElementContainer=originalEl.cloneNode(true)
-            // brElement=document.createElement("br")
-            // brElementContainer.replaceChild(brElement,brElementContainer.firstChild)
-
-            // currentPageEl.insertBefore(brElementContainer,originalEl)
-            console.log("parent element")
+            if(selection.anchorNode.offsetTop === undefined) {
+              this.currentCaretPosition = selection.anchorNode.parentNode ? selection.anchorNode.parentNode.offsetTop + selection.anchorNode.parentNode.offsetHeight: 0
+            } else {
+              this.currentCaretPosition = selection.anchorNode ? selection.anchorNode.offsetTop  + selection.anchorNode.offsetHeight : 0
+            }
+            
             
         }
 
@@ -257,28 +272,38 @@ export default class ContentEditable extends Component {
         currentPageEl.insertBefore(beforeElement,originalEl)
         currentPageEl.insertBefore(brElementContainer,originalEl)
         currentPageEl.removeChild(originalEl)
+        
       }
-      if(caretPos>=currentPageEl.clientHeight && currentPageEl.lastElementChild.offsetHeight + currentPageEl.lastElementChild.offsetTop > currentPageEl.clientHeight){
-        const nextEditableEl = document.getElementById("editable_u16b")
-        // nextEditableEl.focus()
-      }
+      
     }
   
-
+    console.log("this.currentCaretPosition !== this.previousCaretPosition",this.currentCaretPosition !== this.previousCaretPosition)
     if(this.currentCaretPosition !== this.previousCaretPosition) {
+      console.log("this.currentCaretPosition !== this.previousCaretPosition",this.currentCaretPosition !== this.previousCaretPosition)
+      let i=0;
+      let nextEditableElfirstChild=nextEditableEl.firstChild
+      let spaceFound = false;
+      let selection = window.getSelection()
+      let enteredTriggeredLoc=selection.anchorNode;
+      let enteredTriggeredLast=nextEditableElfirstChild
+
+      while (i<this.allPages.length && !spaceFound){
+        console.log("while",i)
+        console.log("currentPageId id",currentPageId)
+        console.log("nextPageId id",nextPageId)
+         console.log("currentPageEl",currentPageEl)
       const currentPageElHeight = currentPageEl.clientHeight
 
       // Current Editable reference
-      const currentEditableEl = document.getElementById(`editable_${this.props.page.id}`)
+      const currentEditableEl = document.getElementById(currentEditableElId)
       let currentEditableElHeight = currentPageEl.lastElementChild ? currentPageEl.lastElementChild.offsetHeight + currentPageEl.lastElementChild.offsetTop: 0
      
-      // Next Editable reference
-      const nextEditableEl = document.getElementById("editable_u16b")
-      const nextEditableElHeight = nextEditableEl.clientHeight
+      // // Next Editable reference
+      // const nextEditableEl = document.getElementById("editable_u16b")
+      // const nextEditableElHeight = nextEditableEl.clientHeight
       
       let currentPageItem = []
       let nextPageItem = []
- 
       if(currentEditableElHeight > currentPageElHeight) {
         
         let currentEditableElLastChild = currentEditableEl.lastElementChild
@@ -286,7 +311,9 @@ export default class ContentEditable extends Component {
       
 
         if(this.currentCaretPosition > currentPageElHeight) {
-            console.log("this.currentCaretPosition > currentPageElHeight")
+            console.log("currentEditableElLastChild.offsetTop < currentPageElHeight",currentEditableElLastChild.offsetTop < currentPageElHeight)
+            console.log("currentEditableElLastChild.offsetHeight + currentEditableElLastChild.offsetTop > currentPageElHeight",
+            currentEditableElLastChild.offsetHeight + currentEditableElLastChild.offsetTop > currentPageElHeight)
             let lastEditableModifiedText=""
             let span=document.createElement("span")
             let childNode=null
@@ -294,7 +321,7 @@ export default class ContentEditable extends Component {
 
 
             while(currentEditableElHeight > currentPageElHeight){
-                
+                console.log("in while")
                 const currentPageItem = currentEditableElLastChild.innerText.split(" ")
                 lastEditableModifiedText = currentPageItem.pop() + " " + lastEditableModifiedText
                 currentEditableElLastChild.innerHTML = currentPageItem.join(" ")
@@ -305,9 +332,11 @@ export default class ContentEditable extends Component {
                     let span = document.createElement("span");
                     // currentEditableElLastChild.innerHTML=lastEditableModifiedText
                     if(currentEditableElLastChild.innerHTML==='<br>'){
-                        span.appendChild(document.createElement("br"))
+                      childNode=document.createElement("br")
+                        span.appendChild(childNode)
                     }else{
-                        span.appendChild(document.createTextNode(lastEditableModifiedText))
+                      childNode=document.createTextNode(lastEditableModifiedText)
+                        span.appendChild(childNode)
                     }
     
                     nextEditableEl.insertBefore(span,nextEditableEl.firstElementChild)
@@ -331,13 +360,20 @@ export default class ContentEditable extends Component {
                     span.appendChild(childNode)
                     nextEditableEl.insertBefore(span,nextEditableEl.firstElementChild)
                 }
-                console.log("currentPageEl.lastChild",currentEditableElHeight,currentPageEl.lastElementChild)
-                if(currentPageEl.lastElementChild.innerHTML==='<br>' && currentPageEl.lastElementChild.offsetTop===0){
+                while(currentPageEl.lastElementChild.innerHTML==='<br>' && currentPageEl.lastElementChild.offsetTop===0){
                     currentPageEl.removeChild(currentPageEl.lastElementChild)
                     currentEditableElHeight = currentPageEl.lastChild ? currentPageEl.lastElementChild.offsetHeight + currentPageEl.lastElementChild.offsetTop: 0
                 }
+                if(!selection.anchorNode.isEqualNode(enteredTriggeredLast)){
+                  console.log("selection from last",selection.anchorNode,selection.anchorNode.isEqualNode(enteredTriggeredLast))
+                  enteredTriggeredLast=selection.anchorNode
+                  if(!enteredTriggeredLast.isEqualNode(currentPageEl))
+                  childNode=enteredTriggeredLast  
+                  console.log("childNode",childNode,"enteredTriggeredLast",enteredTriggeredLast)
+                  // this.moveFocus(enteredTriggeredLast,0)
+                }
                 // const nextEditableEl = document.getElementById("editable_u16b")
-                nextEditableEl.focus()
+                // nextEditableEl.focus()
                 
             // const currentPageItem = currentEditableElLastChild.innerText.split(" ")
             // const lastEditableModifiedText = currentPageItem.pop()
@@ -369,9 +405,75 @@ export default class ContentEditable extends Component {
           if(nextEditableElfirstChild.innerHTML === "<br>" && nextEditableEl.childElementCount === 1) {
             nextEditableEl.replaceChild(currentEditableElLastChild, nextEditableElfirstChild)
             nextEditableEl.focus()
+            
           } else {
-            nextEditableEl.insertBefore(currentEditableElLastChild, nextEditableElfirstChild)
-            nextEditableEl.focus()
+            // nextEditableEl.insertBefore(currentEditableElLastChild, nextEditableElfirstChild)
+            // nextEditableEl.focus()
+            // nextEditableEl && nextEditableEl.insertBefore(currentEditableElLastChild, nextEditableElfirstChild)
+            //pipeline logic
+            
+            if(nextEditableEl.lastElementChild.offsetTop+nextEditableEl.lastElementChild.clientHeight > nextEditableEl.clientHeight){
+             console.log("entered from end,space not found")
+             console.log("pipeline logic,when moved from end")
+
+            //  currentPageEl=document.getElementById(`editable_${this.props.page.next_page}`)
+            //  currentEditableElId=`editable_${this.props.page.next_page}`
+
+             this.currPageDetails=this.allPages.find((element)=>element.id===currentPageId)
+              if(this.currPageDetails !=null){
+              currentPageId=this.currPageDetails.next_page
+             currentPageEl=document.getElementById(`editable_${this.currPageDetails.next_page}`)
+             currentEditableElId=`editable_${this.currPageDetails.next_page}`
+             console.log("this.currPageDetails",this.currPageDetails)
+              }else{
+                console.log("this.currPageDetails is null")
+              }
+
+
+            //  nextEditableElId=`editable_u16c`;
+            //  nextEditableEl=document.getElementById(nextEditableElId)
+             console.log("nextPageId",nextPageId)
+             this.nextPageDetails=this.allPages.find((element)=>element.id===nextPageId)
+             console.log("this.nextPageDetails",this.nextPageDetails)
+             if(this.nextPageDetails.next_page !== null){
+               
+             nextEditableElId=`editable_${this.nextPageDetails.next_page}`
+             nextPageId=this.nextPageDetails.next_page;
+             nextEditableEl=document.getElementById(nextEditableElId)
+             console.log("next details",nextEditableElId,currentPageEl)
+             this.moveFocus(nextEditableEl.lastElementChild,1)
+             selection=window.getSelection()
+             if(selection.anchorNode.offsetTop === undefined) {
+                this.currentCaretPosition = selection.anchorNode.parentNode ? selection.anchorNode.parentNode.offsetTop + selection.anchorNode.parentNode.offsetHeight: 0
+              } else {
+                this.currentCaretPosition = selection.anchorNode ? selection.anchorNode.offsetTop + selection.anchorNode.offsetHeight: 0
+              }
+             }else{
+               console.log("null next")
+               const lastpage=document.getElementById(`editable_${nextPageId}`)
+
+               this.bufferContent+=lastpage.lastElementChild.innerHTML
+
+              lastpage.removeChild(lastpage.lastElementChild)
+               this.moveFocus(document.getElementById(`editable_${currentPageId}`).firstElementChild,0)
+               spaceFound=true
+               console.log(this.bufferContent)
+             }
+
+            //  this.moveFocus(nextEditableEl.lastElementChild,1)
+            //  selection=window.getSelection()
+            //  if(selection.anchorNode.offsetTop === undefined) {
+            //     this.currentCaretPosition = selection.anchorNode.parentNode ? selection.anchorNode.parentNode.offsetTop + selection.anchorNode.parentNode.offsetHeight: 0
+            //   } else {
+            //     this.currentCaretPosition = selection.anchorNode ? selection.anchorNode.offsetTop + selection.anchorNode.offsetHeight: 0
+            //   }
+
+            }else{
+              //break loop
+              console.log("nnnnnnnn")
+              // this.moveFocus(enteredTriggeredLast,0)
+              spaceFound=true
+             }
           } 
 
         } else {
@@ -419,15 +521,77 @@ export default class ContentEditable extends Component {
                 nextEditableEl.insertBefore(span,nextEditableEl.firstElementChild)
             }
        
-            if(currentPageEl.lastElementChild.innerHTML==='<br>' && currentPageEl.lastElementChild.offsetTop===0){
+            while(currentPageEl.lastElementChild.innerHTML==='<br>' && currentPageEl.lastElementChild.offsetTop===0){
                 currentPageEl.removeChild(currentPageEl.lastElementChild)
                 currentEditableElHeight = currentPageEl.lastChild ? currentPageEl.lastElementChild.offsetHeight + currentPageEl.lastElementChild.offsetTop: 0
             }
+            console.log("selection",selection.anchorNode,enteredTriggeredLoc,selection.anchorNode.isEqualNode(enteredTriggeredLoc))
+            if(!selection.anchorNode.isEqualNode(enteredTriggeredLoc)){
+              // console.log("selection",selection.anchorNode,selection.anchorNode.isEqualNode(enteredTriggeredLoc))
+              enteredTriggeredLoc=selection.anchorNode
+            }
+            
+             //pipeline logic
+             console.log("nextEditableEl",nextEditableEl)
+             console.log("Move",nextEditableEl.lastElementChild.offsetTop+nextEditableEl.lastElementChild.clientHeight > nextEditableEl.clientHeight )
+            //  console.log("pipeline logic")
+             if(nextEditableEl.lastElementChild.offsetTop+nextEditableEl.lastElementChild.clientHeight > nextEditableEl.clientHeight){
+              //  pipeline logic when moved from between
+              //  entered from between,space not found
+
+                this.currPageDetails=this.allPages.find((element)=>element.id===currentPageId)
+                if(this.currPageDetails !=null){
+                currentPageId=this.currPageDetails.next_page
+               currentPageEl=document.getElementById(`editable_${this.currPageDetails.next_page}`)
+               currentEditableElId=`editable_${this.currPageDetails.next_page}`
+               console.log("this.currPageDetails",this.currPageDetails)
+                }else{
+                  console.log("this.currPageDetails is null")
+                }
+
+                console.log("nextPageId",nextPageId)
+               this.nextPageDetails=this.allPages.find((element)=>element.id===nextPageId)
+               console.log("this.nextPageDetails",this.nextPageDetails)
+               if(this.nextPageDetails.next_page !== null){
+                 
+               nextEditableElId=`editable_${this.nextPageDetails.next_page}`
+               nextPageId=this.nextPageDetails.next_page;
+               nextEditableEl=document.getElementById(nextEditableElId)
+               console.log("next details",nextEditableElId,currentPageEl)
+               this.moveFocus(nextEditableEl.lastElementChild,1)
+               selection=window.getSelection()
+               if(selection.anchorNode.offsetTop === undefined) {
+                  this.currentCaretPosition = selection.anchorNode.parentNode ? selection.anchorNode.parentNode.offsetTop + selection.anchorNode.parentNode.offsetHeight: 0
+                } else {
+                  this.currentCaretPosition = selection.anchorNode ? selection.anchorNode.offsetTop + selection.anchorNode.offsetHeight: 0
+                }
+               }else{
+                 console.log("null next")
+                 const lastpage=document.getElementById(`editable_${nextPageId}`)
+
+                 this.bufferContent+=" "+lastpage.lastElementChild.innerHTML
+
+                lastpage.removeChild(lastpage.lastElementChild)
+                 this.moveFocus(enteredTriggeredLoc,0)
+                 spaceFound=true
+                 console.log(this.bufferContent)
+               }
+               
+             }else{
+               //break loop
+               console.log("enteredTriggeredLoc",enteredTriggeredLoc)
+               this.moveFocus(enteredTriggeredLoc,0)
+               spaceFound=true
+               
+             }
         
         }
       }else{
           console.log("not greTER")
+          spaceFound=true;
       }
+      i++;
+    }//while end
     }
 
     this.previousCaretPosition = this.currentCaretPosition
