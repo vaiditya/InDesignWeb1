@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types"
-import { functionTypeAnnotation } from "@babel/types";
+import metadata from "./metadata";
 
 export class Caret {
     /**
@@ -50,6 +50,10 @@ function normalizeHtml(str) {
 }
 
 export default class ContentEditable extends Component {
+  constructor(props){
+    super(props);
+    Object.values(metadata).map((element)=> element.pages.map((mapElement)=>this.allPages.push(mapElement)))
+  }
   static propTypes = {
     html: PropTypes.string,
     onChange: PropTypes.func,
@@ -80,240 +84,171 @@ export default class ContentEditable extends Component {
     sel.removeAllRanges();
     sel.addRange(range);
   }
+  allPages=[]
+  nextPageDetails=null
+  currPageDetails=null
+  bufferContent="";
 
  
   emitKeyup = (e) => {
-    const currentPageEl = this.getEl();
+
+    let currentEditableElId=`editable_${this.props.page.id}`;
+    let nextEditableElId= this.props.page.next_page !== null ? `editable_${this.props.page.next_page}` : `editable_${this.props.page.id}`;
+    let nextPageId=this.props.page.next_page;
+    let currentPageId=this.props.page.id;
+    let currentPageEl=document.getElementById(currentEditableElId)
+    let previousEditableElId=this.props.page.prev_page !== null ? `editable_${this.props.page.prev_page}` : `editable_${this.props.page.id}` ;
+    let fromBack = false
+   
     if (!currentPageEl) return;
 
     const selection = window.getSelection();
-    if(selection.anchorNode.offsetTop === undefined) {
+   
+    if(selection.anchorNode === null){
+
+      this.currentCaretPosition = currentPageEl.lastElementChild ? currentPageEl.lastElementChild.offsetTop + currentPageEl.lastElementChild.offsetHeight:0
+      this.moveFocus(currentPageEl.lastElementChild,0)
+
+    }else if(selection.anchorNode.isEqualNode(currentPageEl)){
+
+      this.currentCaretPosition = selection.anchorNode.lastElementChild ? selection.anchorNode.lastElementChild.offsetTop + selection.anchorNode.lastElementChild.offsetHeight: 0
+     
+    }else if(selection.anchorNode.offsetTop === undefined) {
+
       this.currentCaretPosition = selection.anchorNode.parentNode ? selection.anchorNode.parentNode.offsetTop + selection.anchorNode.parentNode.offsetHeight: 0
+      
     } else {
+      
       this.currentCaretPosition = selection.anchorNode ? selection.anchorNode.offsetTop + selection.anchorNode.offsetHeight: 0
     }
-    console.log("this.currentCaretPosition",this.currentCaretPosition)
+    // console.log("this.currentCaretPosition",this.currentCaretPosition)
 
-    // if(e.keyCode === 8) {
-    //   if(selection.anchorNode.offsetTop !== undefined && selection.anchorNode.offsetTop === 0) {
-    //     e.preventDefault()
-    //     const previousEditableEl = document.getElementById("editable_ucd")
-    //     previousEditableEl.focus()
-    //     this.moveFocus(previousEditableEl, previousEditableEl.childElementCount - 1, true)
-    //   } else {
-    //     if(selection.anchorNode.offsetTop === undefined) {
-    //       console.log("parentNode: ", selection.anchorNode.parentNode.offsetTop)
-    //       // if user have typed something and reached to the first line by erasing all the words
-    //       if(selection.anchorOffset - 1 === 0 && selection.anchorNode.parentNode.offsetTop === 0) {
-    //         e.preventDefault()
-    //         const previousEditableEl = document.getElementById("editable_ucd")
-    //         console.log("Remove node from child and append it to parent ...!")
-    //         if(currentPageEl.childElementCount === 1) {
-    //           currentPageEl.innerHTML = "<div><br></div>"
-    //         } else {
-    //           currentPageEl.removeChild(currentPageEl.firstChild)
-    //         }
-    //         previousEditableEl.focus()
-    //         this.moveFocus(previousEditableEl, previousEditableEl.childElementCount, false)
-    //       // if user have typed something and taken cursor back to start position on first line
-    //       } else if(selection.anchorOffset - 1 === -1 && selection.anchorNode.parentNode.offsetTop === 0) {
-    //         e.preventDefault()
-    //         console.log("Remove text from behind the cursor and append it to the parent ...!")
-    //         const previousEditableEl = document.getElementById("editable_ucd")
-    //         const currentFirstChildNode = currentPageEl.firstChild
-    //         previousEditableEl.appendChild(currentFirstChildNode)
-    //         if(currentPageEl.childElementCount === 0) {
-    //           currentPageEl.innerHTML = "<div><br></div>"
-    //         }
-    //         previousEditableEl.focus()
-    //         this.moveFocus(previousEditableEl, previousEditableEl.childElementCount - 1, true)
-    //       }
-    //     } else {
-    //       console.log("anchorNode: ", selection.anchorNode.offsetTop)
-    //       // Not having any parent nodes : ideally first page of the document
-    //       if(selection.anchorNode.offsetTop === 0) {
-    //         e.preventDefault()
-    //       }
-    //     }
-    //   }
-    // }
+    if(e.keyCode === 8) {
+
+      let previousEditableEl = document.getElementById(previousEditableElId)
+      let previousPageEl = document.getElementById(previousEditableElId)
+
+      let prevEditableElHeight = previousEditableEl.lastElementChild ? previousEditableEl.lastElementChild.offsetHeight + previousEditableEl.lastElementChild.offsetTop: 0
+      let prevPageElHeight = previousPageEl.clientHeight;
+
+      if(selection.anchorNode.offsetTop !== undefined && selection.anchorNode.offsetTop === 0) {
+        // Initially back stroke from empty space
+        e.preventDefault()
+     
+        if  ( previousEditableEl.childElementCount === 1 && previousEditableEl.firstElementChild.innerHTML === '<br>'){
+          this.moveFocus(previousEditableEl, previousEditableEl.childElementCount, true)
+        }else if(previousEditableEl.childElementCount === 0){
+          this.moveFocus(previousEditableEl, 0, true)
+        }else{
+          this.moveFocus(previousEditableEl, previousEditableEl.childElementCount, true)
+        }
+        
+        console.log("currentPageEl",currentPageEl.firstElementChild)
+
+      } else {
+
+        if(selection.anchorNode.offsetTop === undefined) {
+          console.log("parentNode: ", selection.anchorNode.parentNode.offsetTop)
+       
+          if(selection.anchorOffset - 1 === -1 && selection.anchorNode.parentNode.offsetTop === 0) {
+
+            e.preventDefault()
+            console.log("Remove text from behind the cursor and append it to the parent ...!")
+            
+            let currentFirstChildNode = currentPageEl.firstChild
+            
+            previousEditableEl.appendChild(currentFirstChildNode)
+            
+            prevEditableElHeight = previousEditableEl.lastElementChild ? previousEditableEl.lastElementChild.offsetHeight + previousEditableEl.lastElementChild.offsetTop: 0
+
+            while (prevEditableElHeight < prevPageElHeight && currentFirstChildNode !== null){
+             
+              previousEditableEl.appendChild(currentFirstChildNode)
+              this.currentCaretPosition=prevEditableElHeight
+
+              prevEditableElHeight = previousEditableEl.lastElementChild ? previousEditableEl.lastElementChild.offsetHeight + previousEditableEl.lastElementChild.offsetTop: 0
+           
+              currentFirstChildNode = currentPageEl.firstChild
+           
+            }
+            
+            this.currentCaretPosition=prevEditableElHeight
+
+            nextEditableElId=currentEditableElId
+            currentEditableElId=previousEditableElId;
+            fromBack = true
+            
+
+          
+
+          }
+        } else {
+          console.log("anchorNode: ", selection.anchorNode.offsetTop)
+          // Not having any parent nodes : ideally first page of the document
+          if(selection.anchorNode.offsetTop === 0) {
+            e.preventDefault()
+          }
+        }
+
+      }
+    }
+   
+    currentPageEl=document.getElementById(currentEditableElId)
+    let currentEditableEl=document.getElementById(currentEditableElId)
+    let currentEditableElHeight=currentPageEl.lastElementChild ? currentPageEl.lastElementChild.offsetHeight + currentPageEl.lastElementChild.offsetTop: 0
+    let currentEditableElLastChild=currentEditableEl.lastElementChild
+   
 
     if(this.currentCaretPosition !== this.previousCaretPosition) {
+
+      let j=0;
+      let spaceFound = false;
+      let selection = window.getSelection()
+      let enteredTriggeredLoc=selection.anchorNode;
+      while (j<this.allPages.length && !spaceFound){
       const currentPageElHeight = currentPageEl.clientHeight
-
-      // Current Editable reference
-      const currentEditableEl = document.getElementById(`editable_${this.props.page.id}`)
-      let currentEditableElHeight = currentPageEl.lastElementChild ? currentPageEl.lastElementChild.offsetHeight + currentPageEl.lastElementChild.offsetTop: 0
-      console.log("currentEditableElHeight",currentEditableElHeight)
-      console.log("currentPageElHeight",currentPageElHeight)
-      // Next Editable reference
-      const nextEditableEl = document.getElementById("editable_u16b")
-      const nextEditableElHeight = nextEditableEl.clientHeight
+      currentEditableElHeight = currentPageEl.lastElementChild ? currentPageEl.lastElementChild.offsetHeight + currentPageEl.lastElementChild.offsetTop: 0
       
-      let currentPageItem = []
-      let nextPageItem = []
-
+      // Next Editable reference
+      let nextEditableEl = document.getElementById(nextEditableElId)
+  
 
       if(currentEditableElHeight > currentPageElHeight) {
         
-        let currentEditableElLastChild = currentEditableEl.lastElementChild
+        
+        currentEditableElLastChild = currentEditableEl.lastElementChild
         let nextEditableElfirstChild = nextEditableEl.firstElementChild
+        
 
         if(this.currentCaretPosition > currentPageElHeight) {
-         
           if(currentEditableElLastChild.offsetHeight + currentEditableElLastChild.offsetTop > currentPageElHeight && currentEditableElLastChild.offsetTop < currentPageElHeight) {
-            
-            let extraContent=""
-            let clonedCurrentPageItem=null
-            let parentEl=null;
-            let i=0;
-
-            while(currentEditableElHeight>currentPageElHeight){
-
-              currentEditableElLastChild = currentEditableEl.lastElementChild
-              // console.log("currentPageItem",currentEditableElLastChild)
-              clonedCurrentPageItem=currentEditableElLastChild.cloneNode(true)
-            
-
-              let innerEl=null;
-              parentEl=null;
-              
-              innerEl=clonedCurrentPageItem.childNodes[clonedCurrentPageItem.childNodes.length-2]
-              console.log(innerEl.childNodes[innerEl.childNodes.length-1])
-              let outerWhile=false
-              while(!outerWhile){
-                while (innerEl.nodeType !== 3 && innerEl.childNodes.length > 0){
-                  parentEl=innerEl
-                  innerEl=innerEl.childNodes[innerEl.childNodes.length-1]
-                  // console.log("in while",innerEl.nodeType,innerEl)  
-                }
-                if( innerEl.nodeType !== 3 && innerEl.childNodes.length === 0){
-                  i++;
-                  console.log("child got empty",parentEl.previousSibling,innerEl)
-                  innerEl=parentEl.previousSibling
-                  console.log("extraContent1",extraContent)
-                  // extraContentArr.push(extraContent);
-                  extraContent=''
-                }else{
-                  outerWhile=true
-                }
-              }
-              
-              // console.log("parentEl",parentEl.parentElement)
-              // console.log("innerEl",innerEl)
-              // console.log("innerElArr",innerEl.textContent.trim().split(" ").filter((element)=>element!==''))
-
-              let innerElArr=innerEl.textContent.trim().split(" ").filter((element)=>element!=='')
-              extraContent=innerElArr.pop()+" "+extraContent
-              let revisedContent=innerElArr.join(" ");
-              // console.log("revisedContent",revisedContent)
-
-              parentEl.innerHTML=revisedContent
-              // console.log("parentEl",parentEl)
-              // console.log("clonedCurrentPageItem",clonedCurrentPageItem)
-
-              currentPageEl.replaceChild(clonedCurrentPageItem,currentEditableElLastChild)
-
-              // console.log("currentPageElHeight",currentPageEl.clientHeight)
-              currentEditableElHeight = currentPageEl.lastElementChild ? currentPageEl.lastElementChild.offsetHeight + currentPageEl.lastElementChild.offsetTop: 0
-              // console.log("currentEditableElHeight",currentEditableElHeight)
-              currentEditableElLastChild = currentPageEl.lastElementChild
-              
-          }
-            let extraInnerEl=null;
-            let extraParentEl=null;
-            let clonedCurrentPageItemExtra=clonedCurrentPageItem.cloneNode(true)
-            // console.log("extra Content : ",extraContent)
-
-            extraInnerEl=clonedCurrentPageItemExtra.childNodes[clonedCurrentPageItemExtra.childNodes.length-2]
-            console.log(extraInnerEl.childNodes[extraInnerEl.childNodes.length-1])
-            
-            while (extraInnerEl.nodeType !== 3 ){
-              extraParentEl=extraInnerEl
-              extraInnerEl=extraInnerEl.childNodes[extraInnerEl.childNodes.length-1]
-              // console.log("in while",extraInnerEl.nodeType)  
-            }
-            extraParentEl.innerHTML=extraContent
-            // console.log("clonedCurrentPageItem",clonedCurrentPageItemExtra)
-
-
-            if(nextEditableElfirstChild.innerHTML === "<br>" && nextEditableEl.childElementCount === 1) {
-              nextEditableEl.replaceChild(clonedCurrentPageItemExtra, nextEditableElfirstChild)
-            } else {
-              nextEditableEl.insertBefore(clonedCurrentPageItemExtra, nextEditableElfirstChild)
-            }
-
-            // return this.moveFocus(clonedCurrentPageItemExtra, 0)
-          }else{
-            //currentEditableElLastChild.offsetTop > currentPageElHeight
-            
-            currentPageEl.removeChild(currentEditableElLastChild);
-            this.moveFocus(nextEditableEl.firstElementChild,0)
-            currentEditableElLastChild=currentPageEl.lastElementChild
-          }
-
-          // if(nextEditableElfirstChild.innerHTML === "<br>" && nextEditableEl.childElementCount === 1) {
-          //   nextEditableEl.replaceChild(currentEditableElLastChild, nextEditableElfirstChild)
-          //   nextEditableEl.focus()
-          // } else {
-          //   nextEditableEl.insertBefore(currentEditableElLastChild, nextEditableElfirstChild)
-          //   nextEditableEl.focus()
-          // } 
-
-        } else {
-          console.log("currentEditableElLastChild",currentEditableElLastChild)
-          console.log("nextEditableElfirstChild",nextEditableElfirstChild)
-          console.log("Moved content to the next page")
-          // nextEditableEl.insertBefore(currentEditableElLastChild, nextEditableElfirstChild)
-          let extraContent="";
-          
             let clonedCurrentPageItem=null
             let clonedForNextPage=null
-            let parentEl=null;
-            let parentArr=[];
             let childArr=[];
             let index=0;
+            let innerEl=null;
 
             while(currentEditableElHeight > currentPageElHeight){
-
+              
+              
               if (clonedForNextPage === null){
                 clonedForNextPage=currentEditableElLastChild.cloneNode(true)
               }
               index=0;
               currentEditableElLastChild = currentEditableEl.lastElementChild
-              console.log("currentPageItem",currentEditableElLastChild)
               clonedCurrentPageItem=currentEditableElLastChild.cloneNode(true)
               
-
-              let innerEl=null;
-              parentEl=null;
               
-              innerEl=clonedCurrentPageItem.childNodes[clonedCurrentPageItem.childNodes.length-2]
-              console.log("clonedCurrentPageItem",clonedCurrentPageItem)
-              console.log(innerEl.childNodes[innerEl.childNodes.length-1])
+              let tempIndex=clonedCurrentPageItem.childNodes.length-1
+              let el = clonedCurrentPageItem.childNodes[tempIndex]
+              while ( el.nodeType === 3 ){
+                tempIndex--;
+                el = clonedCurrentPageItem.childNodes[tempIndex]
+              }
               
-              let outerWhile=false
-              // while(!outerWhile){
-              //   console.log("outer while",i)
-              //   while (innerEl.nodeType !== 3 && innerEl.childNodes.length > 0 ){
-              //     parentEl=innerEl
-              //     console.log("innerEl",innerEl.childNodes.length)
-              //     console.log("in while",innerEl.nodeType)
-              //     innerEl=innerEl.childNodes[innerEl.childNodes.length-1]
-              //   }
-              //   if( innerEl.nodeType !== 3 && innerEl.childNodes.length === 0){
-              //     i++;
-              //     console.log("child got empty",parentEl.previousSibling,innerEl)
-              //     innerEl=parentEl.previousSibling
-              //     console.log("extraContent1",extraContent)
-              //     // extraContentArr.push(extraContent);
-              //     extraContent=''
-              //   }else{
-              //     outerWhile=true
-              //   }
-                
-              // }
-              
+              innerEl=el
+            
+          
               function FTN ( el ) {
                 if (el.nodeType === 3){
                   return (
@@ -364,53 +299,261 @@ export default class ContentEditable extends Component {
                 }
               }
              
-              let res=FTN (innerEl);
-              console.log("childarr",childArr)
-              console.log("revisedEl",innerEl)
-
-              
-
-
-              
-              // console.log("innerElArr",innerEl.textContent.trim().split(" ").filter((element)=>element!==''))
-
-              // let innerElArr=innerEl.textContent.trim().split(" ").filter((element)=>element!=='')
-              // extraContent=innerElArr.pop()
-              // let revisedContent=innerElArr.join(" ");
-              // console.log("revisedContent",revisedContent)
-
-              // parentEl.innerHTML=revisedContent
-              // console.log("parentEl",parentEl)
-              // console.log("clonedCurrentPageItem",clonedCurrentPageItem)
-
-              currentPageEl.replaceChild(clonedCurrentPageItem,currentEditableElLastChild)
-
-              // console.log("currentPageElHeight",currentPageEl.clientHeight)
+              FTN (innerEl);
+              if (clonedCurrentPageItem.innerText.trim().length > 0){
+                currentPageEl.replaceChild(clonedCurrentPageItem,currentEditableElLastChild)
+              }else{
+                currentPageEl.removeChild(currentEditableElLastChild)
+              }
               currentEditableElHeight = currentPageEl.lastElementChild ? currentPageEl.lastElementChild.offsetHeight + currentPageEl.lastElementChild.offsetTop: 0
-              // console.log("currentEditableElHeight",currentEditableElHeight)
               currentEditableElLastChild = currentPageEl.lastElementChild
-
-              // if(extraContentArr.length===0){
-              //   let a=extraContentArr[i]
-              //   let b=extraContent+" "+(a !== undefined ? a : "")
-              //   extraContentArr[i]=b
-              //   i=0;
-              // }else{
-              //   console.log("extraContentArr.length-1",extraContentArr.length-1)
-              //   let a=extraContentArr[i]
-              //   let b=extraContent+" "+(a !== undefined ? a : "")
-              //   extraContentArr[i]=b
-              //   i=0;
-              // }
-              // console.log("extraContentArr",extraContentArr)
-           
-          } //While
+              
+          }
+          if (childArr.length === 0){
+            this.moveFocus(nextEditableEl.firstElementChild,0)
+          }
           childArr.unshift("asd")
-          console.log("cA.l",childArr)
+       
           let remChild=[]
           if( clonedForNextPage !== null){
           
-          let innerEl=clonedForNextPage.childNodes[clonedForNextPage.childNodes.length-2]
+            let tempIndex=clonedForNextPage.childNodes.length-1
+            let el = clonedForNextPage.childNodes[tempIndex]
+            while ( el.nodeType === 3 ){
+              tempIndex--;
+              el = clonedForNextPage.childNodes[tempIndex]
+            }  
+            let innerEl=el
+         
+
+          function FEN ( el ) {
+            if (el.nodeType === 3){
+              remChild.push(childArr.pop())
+              return (
+                {
+                  flag:true,
+                  type:"text"
+                }
+              );
+            }
+            else {
+              let i=el.childNodes.length-1;
+              let a= { flag:true , type:"node" };
+              while (a.flag === true && a.type === "node"){
+                if ( i > -1){
+                  a= FEN ( el.childNodes[i] );
+               }else{
+                 return ({flag:true , type:"node"})
+               }
+                
+                if (a.flag === true && a.type === "text"){
+                  return ({flag:true , type:"node"}); 
+                }else if ( a.flag === true && a.type === "node"){
+                    if(childArr.length < 1){
+                      el.removeChild(el.childNodes[i]);
+                      i--;
+                    }else{
+                      i--;
+                    }
+   
+                }
+              }
+            }
+          }
+
+          FEN (innerEl);
+          function FFN ( el ) {
+            if (el.nodeType === 3){
+              return (
+                {
+                  flag:true,
+                  type:"text"
+                }
+              );
+            }
+            else {
+              
+              let i=el.childNodes.length-1;
+              let a= { flag:true , type:"node" };
+              
+              
+              while (a.flag === true && a.type === "node"){
+                if ( i > -1){
+                  a= FFN ( el.childNodes[i] );;
+               }else{
+                 return ({flag:true , type:"node"})
+               }
+                
+                if (a.flag === true && a.type === "text"){
+
+                  let Content = el.childNodes[i].textContent.trim().split(" ").filter((element)=>element!=='');
+                  let extraContent=Content.pop()
+                  if (remChild[remChild.length-1]==="asd"){
+                    remChild.pop()
+                  }
+                  el.innerHTML=remChild.pop()
+                 
+                  let temp= childArr[index]===undefined ? extraContent : extraContent + " " + childArr[index];
+                
+                 
+                  
+                  return ({flag:true , type:"node"});
+                  
+                }else if ( a.flag === true && a.type === "node"){
+                 
+                    
+                      i--;
+                    
+   
+                }
+              }
+            }
+          }
+          FFN (innerEl);
+          }//end if
+       
+            if (nextEditableEl.childElementCount === 0){
+              nextEditableEl.appendChild(clonedForNextPage)
+            }else if(nextEditableElfirstChild.innerHTML === "<br>" && nextEditableEl.childElementCount === 1) {
+              nextEditableEl.replaceChild(clonedForNextPage, nextEditableElfirstChild)
+            } else {
+              nextEditableEl.insertBefore(clonedForNextPage, nextEditableElfirstChild)
+            }
+         
+            clonedForNextPage=null;
+           
+            if (currentEditableElLastChild.innerText.trim().length === 0)
+              return this.moveFocus(nextEditableEl.firstElementChild, 0)
+            
+       
+              currentEditableElLastChild = currentPageEl.lastElementChild
+    
+              if ( fromBack ){
+                let tempIndex=currentEditableElLastChild.childNodes.length-1
+                let el = currentEditableElLastChild.childNodes[tempIndex]
+                while ( el.nodeType !== 3 ){
+                  tempIndex--;
+                  el = currentEditableElLastChild.childNodes[tempIndex]
+                }
+              
+                this.moveFocus(el,el.length-1)
+                fromBack = false
+              }
+    
+          }else{
+           
+            // currentPageEl.removeChild(currentEditableElLastChild);
+            // return this.moveFocus(nextEditableEl.firstElementChild,0)
+       
+          }
+
+        
+
+        } else {
+        
+          console.log("Moved content to the next page")
+         
+          
+            let clonedCurrentPageItem=null
+            let clonedForNextPage=null
+            let childArr=[];
+            let index=0;
+
+            while(currentEditableElHeight > currentPageElHeight){
+              
+              if (clonedForNextPage === null){
+                clonedForNextPage=currentEditableElLastChild.cloneNode(true)
+              }
+              index=0;
+              currentEditableElLastChild = currentEditableEl.lastElementChild
+             
+              clonedCurrentPageItem=currentEditableElLastChild.cloneNode(true)
+              let innerEl=null;
+              
+           
+              let tempIndex=clonedCurrentPageItem.childNodes.length-1
+              let el = clonedCurrentPageItem.childNodes[tempIndex]
+              while ( el.nodeType === 3 ){
+                tempIndex--;
+                el = clonedCurrentPageItem.childNodes[tempIndex]
+              }
+              
+              innerEl=el
+             
+              function FTN ( el ) {
+                if (el.nodeType === 3){
+                  return (
+                    {
+                      flag:true,
+                      type:"text"
+                    }
+                  );
+                }
+                else if ( el.childNodes.length === 0 ){
+                  index++;
+                  return (
+                    {
+                      flag:false,
+                      type:"node"
+                    }
+                  );
+                }
+                else {
+                  
+                  let i=el.childNodes.length-1;
+                  let a={ flag:false , type:"node" };
+                  while (a.flag === false && a.type === "node"){
+                    a = FTN ( el.childNodes[i] );
+                    if (a.flag === true && a.type === "text"){
+
+                      let Content = el.childNodes[i].textContent.trim().split(" ").filter((element)=>element!=='');
+                      let extraContent=Content.pop()
+                      let revisedContent=Content.join(" ");
+                      el.innerHTML=revisedContent;
+                     
+                      let temp= childArr[index]===undefined ? extraContent : extraContent + " " + childArr[index];
+                      childArr[index]=temp;
+                     
+                      
+                      return ({flag:true , type:"node"});
+                      
+                    }else if( a.flag === false && a.type === "node"){
+                      if (i > 0){
+                        i--;
+                      }else{
+                        return ({flag:false,type:"node"})
+                      }
+                    } else if ( a.flag === true && a.type === "node"){
+                      return ({ flag:true , type:"node"})
+                    }
+                  }
+                }
+              }
+             
+              FTN (innerEl);
+
+              if (clonedCurrentPageItem.innerText.trim().length > 0){
+                currentPageEl.replaceChild(clonedCurrentPageItem,currentEditableElLastChild)
+              }else{
+                currentPageEl.removeChild(currentEditableElLastChild)
+              }
+              
+              currentEditableElHeight = currentPageEl.lastElementChild ? currentPageEl.lastElementChild.offsetHeight + currentPageEl.lastElementChild.offsetTop: 0
+              currentEditableElLastChild = currentPageEl.lastElementChild
+           
+          } //While
+          childArr.unshift("asd")
+          
+          let remChild=[]
+          if( clonedForNextPage !== null){
+          
+            let tempIndex=clonedForNextPage.childNodes.length-1
+            let el = clonedForNextPage.childNodes[tempIndex]
+            while ( el.nodeType === 3 ){
+              tempIndex--;
+              el = clonedForNextPage.childNodes[tempIndex]
+            }  
+            let innerEl=el
 
           function FEN ( el ) {
             if (el.nodeType === 3){
@@ -440,35 +583,27 @@ export default class ContentEditable extends Component {
                   let Content = el.childNodes[i].textContent.trim().split(" ").filter((element)=>element!=='');
                   let extraContent=Content.pop()
                   let revisedContent=Content.join(" ");
-                  // el.innerHTML=revisedContent;
+                 
                  
                   let temp= childArr[index]===undefined ? extraContent : extraContent + " " + childArr[index];
-                  // childArr[index]=temp;
+                  
                  
                   
                   return ({flag:true , type:"node"});
                   
                 }else if ( a.flag === true && a.type === "node"){
-                  console.log("chilArr.length",childArr.length)
                     if(childArr.length < 1){
-                      console.log("chilArr.length",childArr.length)
                       el.removeChild(el.childNodes[i]);
                       i--;
                     }else{
                       i--;
                     }
-   
                 }
               }
             }
           }
 
-          let res=FEN (innerEl);
-            
-          console.log("revisedEl",innerEl)
-          console.log("childArr",childArr)
-          console.log("remChild",remChild)
-
+          FEN (innerEl);
           function FFN ( el ) {
             if (el.nodeType === 3){
               return (
@@ -495,79 +630,102 @@ export default class ContentEditable extends Component {
 
                   let Content = el.childNodes[i].textContent.trim().split(" ").filter((element)=>element!=='');
                   let extraContent=Content.pop()
-                  let revisedContent=Content.join(" ");
+                  
                   if (remChild[remChild.length-1]==="asd"){
                     remChild.pop()
                   }
                   el.innerHTML=remChild.pop()
                  
                   let temp= childArr[index]===undefined ? extraContent : extraContent + " " + childArr[index];
-                  // childArr[index]=temp;
-                 
+                  
                   
                   return ({flag:true , type:"node"});
                   
                 }else if ( a.flag === true && a.type === "node"){
-                  console.log("chilArr.length",childArr.length)
-                    
-                      i--;
-                    
-   
+                  i--;
                 }
               }
             }
           }
-           res=FFN (innerEl);
-            
-          console.log("revisedEl",innerEl)
-          console.log("childArr",childArr)
-          console.log("remChild",remChild)
-
-
+          FFN (innerEl);
           }//end if
-          console.log("clonedForNextPage",clonedForNextPage)
-
-
-          
-            
-            // let extraInnerEl=null;
-            // let extraParentEl=null;
-            // let clonedCurrentPageItemExtra=clonedCurrentPageItem.cloneNode(true)
-            // console.log("extra Content : ",extraContent)
-
-            // extraInnerEl=clonedCurrentPageItemExtra.childNodes[clonedCurrentPageItemExtra.childNodes.length-2]
-            // console.log(extraInnerEl.childNodes[extraInnerEl.childNodes.length-1])
-            
-            // while (extraInnerEl.nodeType !== 3 && extraInnerEl.childNodes.length > 0){
-            //   extraParentEl=extraInnerEl
-            //   extraInnerEl=extraInnerEl.childNodes[extraInnerEl.childNodes.length-1]
-            //   console.log("in while",extraInnerEl.nodeType)  
-            // }
-
-            // let ancEl=extraParentEl.parentElement
-            // let j=extraContentArr.length-1
-            // while(j>-1){
-            // ancEl.childNodes[extraContentArr.length-j-1].innerHTML=extraContentArr[j];
-            // j--;
-            // }
-            // // extraParentEl.innerHTML=extraContentArr[0]
-
-            // console.log("clonedCurrentPageItem",clonedCurrentPageItemExtra)
-
-
-            if(nextEditableElfirstChild.innerHTML === "<br>" && nextEditableEl.childElementCount === 1) {
+         
+          if (nextEditableEl.childElementCount === 0){
+            nextEditableEl.appendChild(clonedForNextPage)
+          }else if(nextEditableElfirstChild.innerHTML === "<br>" && nextEditableEl.childElementCount === 1) {
               nextEditableEl.replaceChild(clonedForNextPage, nextEditableElfirstChild)
             } else {
-              nextEditableEl.insertBefore(clonedForNextPage, nextEditableElfirstChild)
+                  if( currentEditableEl !== nextEditableEl ){
+                    if(nextEditableElfirstChild.innerHTML === "<br>"){
+                      nextEditableEl.replaceChild(clonedForNextPage, nextEditableElfirstChild)
+                    }else{
+                      nextEditableEl.insertBefore(clonedForNextPage, nextEditableElfirstChild)
+                    }
+                  }else{
+                    nextEditableEl.appendChild(clonedForNextPage)
+                  }
+                 
+
+                  if(nextEditableEl.lastElementChild.offsetTop+nextEditableEl.lastElementChild.clientHeight > nextEditableEl.clientHeight){
+                    //  pipeline logic when moved from between
+                    //  entered from between,space not found
+      
+                      this.currPageDetails=this.allPages.find((element)=>element.id===currentPageId)
+                   
+                      if(this.currPageDetails !=null && currentEditableEl!==nextEditableEl){
+                        currentPageId=this.currPageDetails.next_page
+                        currentPageEl=document.getElementById(`editable_${this.currPageDetails.next_page}`)
+                        currentEditableEl=document.getElementById(`editable_${this.currPageDetails.next_page}`)
+                        currentEditableElId=`editable_${this.currPageDetails.next_page}`
+                        
+                      }
+      
+                     
+                      this.nextPageDetails=this.allPages.find((element)=>element.id===nextPageId)
+                      
+
+                      if(this.nextPageDetails !== undefined && this.nextPageDetails.next_page !== null){
+                      
+                        nextEditableElId=`editable_${this.nextPageDetails.next_page}`
+                        nextPageId=this.nextPageDetails.next_page;
+                        nextEditableEl=document.getElementById(nextEditableElId)
+                        
+                        this.moveFocus(nextEditableEl.lastElementChild,1)
+                        selection=window.getSelection()
+                        
+                        if(selection.anchorNode.offsetTop === undefined) {
+                            this.currentCaretPosition = selection.anchorNode.parentNode ? selection.anchorNode.parentNode.offsetTop + selection.anchorNode.parentNode.offsetHeight: 0
+                          } else {
+                            this.currentCaretPosition = selection.anchorNode ? selection.anchorNode.offsetTop + selection.anchorNode.offsetHeight: 0
+                          }
+                      }else{
+                        const lastpage= currentEditableEl!==nextEditableEl ? document.getElementById(`editable_${nextPageId}`) : document.getElementById(`editable_${currentPageId}`)
+                        this.bufferContent = ( lastpage.lastElementChild.innerText.trim().length > 0 ? lastpage.lastElementChild.innerText.trim() + " " : "" ) + this.bufferContent
+                        lastpage.removeChild(lastpage.lastElementChild)
+                        this.moveFocus(enteredTriggeredLoc,0)
+                        spaceFound=true
+                        console.log(this.bufferContent)
+                      }
+                    
+                  }else{
+                    //break loop
+                    this.moveFocus(enteredTriggeredLoc,0)
+                    spaceFound=true
+                  }
             }
             clonedForNextPage=null;
-
         }
       }else{
-        
+        spaceFound=true;
+      
+        if(fromBack){
+          this.moveFocus(currentPageEl.lastElementChild,0)
+          fromBack = false
+        }
       }
     }
-
+    j++;
+  }//end while
     this.previousCaretPosition = this.currentCaretPosition
   }
 

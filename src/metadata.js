@@ -100,7 +100,7 @@ export default {
         {
           "id": "u16c",
           "prev_page" : "u16b",
-          "next_page" : null,
+          "next_page" : null,//"u26b",
           "name": "3",
           "geometric_bound": [
             0.0,
@@ -129,5 +129,74 @@ export default {
         }
       ],
       "textframes": []
-    }
+    },
+
+
+
+    // "u266": {
+    //   "id": "u266",
+    //   "pages": [
+    //     {
+    //       "id": "u26b",
+    //       "prev_page" : "u16c",
+    //       "next_page" : "u26c",
+    //       "name": "2",
+    //       "geometric_bound": [
+    //         0.0,
+    //         0.0,
+    //         600.0,
+    //         400.0
+    //       ],
+    //       "item_transform": [
+    //         1.0,
+    //         0.0,
+    //         0.0,
+    //         1.0,
+    //         -400.0,
+    //         -300.0
+    //       ],
+    //       "margins": {
+    //         "ColumnCount": "1",
+    //         "ColumnGutter": "30",
+    //         "Top": "30",
+    //         "Bottom": "30",
+    //         "Left": "30",
+    //         "Right": "30",
+    //         "ColumnDirection": "Horizontal",
+    //         "ColumnsPositions": "0 176"
+    //       }
+    //     },
+    //     {
+    //       "id": "u26c",
+    //       "prev_page" : "u26b",
+    //       "next_page" : null,
+    //       "name": "3",
+    //       "geometric_bound": [
+    //         0.0,
+    //         0.0,
+    //         600.0,
+    //         400.0
+    //       ],
+    //       "item_transform": [
+    //         1.0,
+    //         0.0,
+    //         0.0,
+    //         1.0,
+    //         0,
+    //         -300.0
+    //       ],
+    //       "margins": {
+    //         "ColumnCount": "1",
+    //         "ColumnGutter": "30",
+    //         "Top": "30",
+    //         "Bottom": "30",
+    //         "Left": "30",
+    //         "Right": "30",
+    //         "ColumnDirection": "Horizontal",
+    //         "ColumnsPositions": "0 176"
+    //       }
+    //     }
+    //   ],
+    //   "textframes": []
+    // }
   }

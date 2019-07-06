@@ -1,5 +1,8 @@
-h1, p {
+h1 {
   font-family: Lato;
+}
+p {
+  margin: 0px
 }
 
 body {

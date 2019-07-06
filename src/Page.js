@@ -27,7 +27,7 @@ export default class Page extends Component {
     return (
       <div id={`page_${page.id}`} className={parseInt(page.name) % 2 === 0 ? "pageOdd" : "pageEven"}  style={{ position: "absolute", width: `${page.geometric_bound[3]}px`,  height: `${page.geometric_bound[2]}px`, top: `${spreadHeight}px`, left: `${spreadWidth}px`, transform: `matrix(${page.item_transform})`}}>
         <ContentEditable
-          html="<div><br /></div>"
+          html="<span><br></span>"
           id={`editable_${page.id}`}
           className="editable"
           page={page}
